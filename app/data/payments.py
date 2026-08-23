@@ -4,13 +4,33 @@ from stripe import StripeClient
 
 from app.models.auth import CurrentUser
 from app.models.db import mySession
-from app.models.schemas import AccountCreate, OnboardSellerResponse, TransactionResponse, TransactionRequest
+from app.models.schemas import AccountCreate, OnboardSellerResponse, TransactionResponse, TransactionRequest, \
+    ListingResponse, ListingRequest
 from app.models.models import Listing, Transaction, TransactionStatus
 
 client = StripeClient(os.getenv('STRIPE_API_KEY'))
 
 router = APIRouter()
 
+
+@router.post('/create_listing', response_model=ListingResponse)
+async def create_listing(db: mySession, user: CurrentUser, listing: ListingRequest):
+    listing = Listing(
+        seller_uid=user.firebase_uid,
+        price=listing.price,
+        lat=listing.lat,
+        lng=listing.lng,
+        spot_in_queue=listing.spot_in_queue,
+    )
+
+    try:
+        db.add(listing)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return listing
 
 @router.post('/onboard_seller', response_model=OnboardSellerResponse)
 async def onboard_seller(db: mySession, user: CurrentUser, body: AccountCreate = AccountCreate()):
@@ -59,16 +79,19 @@ async def start_transaction(db: mySession, user: CurrentUser, body: TransactionR
         'application_fee_amount': int(listing.price * 0.10 * 100), #will prob work out something different
     })
 
-
-    transaction = Transaction(
-        listing_id=listing.id,
-        buyer_uid=user.firebase_uid,
-        seller_uid=listing.seller_uid,
-        price=listing.price,
-        stripe_payment_intent_id=intent.id,
-    )
-    db.add(transaction)
-    db.commit()
+    try:
+        transaction = Transaction(
+            listing_id=listing.id,
+            buyer_uid=user.firebase_uid,
+            seller_uid=listing.seller_uid,
+            price=listing.price,
+            stripe_payment_intent_id=intent.id,
+        )
+        db.add(transaction)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 
     return {**transaction.__dict__, 'client_secret': intent.client_secret}

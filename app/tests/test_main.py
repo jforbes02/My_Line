@@ -5,13 +5,14 @@ from app.main import app
 client = TestClient(app)
 
 
+
 # --- Signup ---
 
 def test_signup(override_db):
     mock_fb_user = MagicMock()
     mock_fb_user.uid = "test-uid-123"
 
-    with patch('app.main.firebase_signup', return_value=mock_fb_user):
+    with patch('app.data.users.firebase_signup', return_value=mock_fb_user):
         response = client.post("/signup", json={
             "email": "test@example.com",
             "password": "Test123!",
@@ -118,9 +119,8 @@ def test_create_listing(override_db):
     mock_listing.lng = -74.0060
     override_db.query.return_value.filter.return_value.first.return_value = mock_user
 
-    with patch('app.main.firebase_auth.verify_id_token', return_value=mock_decoded), \
-         patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
-         patch('app.main.Listing', return_value=mock_listing):
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
+         patch('app.data.payments.Listing', return_value=mock_listing):
         response = client.post("/create_listing?token=fake-token", json={
             "price": 50.0,
             "lat": 40.7128,
