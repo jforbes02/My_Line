@@ -1,10 +1,12 @@
+from datetime import datetime
+
 import phonenumbers
 from pydantic import BaseModel, field_validator
 
 
 def validate_phone(phone: str) -> str:
     try:
-        parsed = phonenumbers.parse(phone)
+        parsed = phonenumbers.parse(phone, "US")
         if not phonenumbers.is_valid_number(parsed):
             raise ValueError
     except Exception:
@@ -30,8 +32,16 @@ class UpdateNameRequest(BaseModel):
 
 class ListingRequest(BaseModel):
     price: float
-    location_id: int
+    lat: float
+    lng: float
     spot_in_queue: int
+
+class AccountCreate(BaseModel):
+    business_type : str = 'company'
+    country: str = 'US'
+
+class TransactionRequest(BaseModel):
+    listing_id: int
 
 # --- Responses ---
 
@@ -45,7 +55,20 @@ class UserResponse(BaseModel):
 class ListingResponse(BaseModel):
     id: int
     price: float
-    status: str
-    location_id: int
+    spot_in_queue: int
+    lat: float
+    lng: float
 
     model_config = {"from_attributes": True}
+
+class OnboardSellerResponse(BaseModel):
+    url: str
+
+class TransactionResponse(BaseModel):
+    listing_id: int
+    buyer_uid: str
+    seller_uid: str
+    price: float
+    created_at: datetime
+    stripe_payment_intent_id: str
+    client_secret: str | None = None

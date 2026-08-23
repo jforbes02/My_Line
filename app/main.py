@@ -1,16 +1,18 @@
 from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from app.models.db import mySession, engine, Base
-from app.models.models import User, Location, Listing
+from app.models.models import User, Listing
 from app.models.auth import signup as firebase_signup, CurrentUser
 from app.models.schemas import SignupRequest, UpdateNameRequest, UserResponse, ListingRequest, ListingResponse
 from firebase_admin import auth as firebase_auth
 from firebase_admin import exceptions as firebase_exc
+from app.data.payments import router as payment_router
 load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.include_router(payment_router)
 
 
 @app.get("/")
@@ -71,12 +73,13 @@ async def update_name(db: mySession, body: UpdateNameRequest, user: CurrentUser)
 
 @app.post('/create_listing', response_model=ListingResponse)
 async def create_listing(db: mySession, user: CurrentUser, listing: ListingRequest):
-    listing = Listing(seller_uid=user.firebase_uid,
-                      price=listing.price,
-                      location_id=listing.location_id,
-                      spot_in_queue=listing.spot_in_queue
+    listing = Listing(
+        seller_uid=user.firebase_uid,
+        price=listing.price,
+        lat=listing.lat,
+        lng=listing.lng,
+        spot_in_queue=listing.spot_in_queue,
     )
-    # in future will do an 'if user standing >= 2 (good) do it else deny' or even just on client side deny low standing accounts
 
     try:
         db.add(listing)
@@ -87,6 +90,6 @@ async def create_listing(db: mySession, user: CurrentUser, listing: ListingReque
 
     return listing
 
-@app.post('/create_location')
-async def create_location(db: mySession, user: CurrentUser, listing: ListingRequest):
+@app.post('/start_transaction')
+async def create_location(db: mySession, user: CurrentUser):
     pass
