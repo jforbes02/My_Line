@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="99e38795-a09d-4042-9e3a-59fda27c7516" name="Changes" comment="Initial Commit">
-      <change afterPath="$PROJECT_DIR$/app/data/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/data/payments.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/tests/test_main.py" afterDir="false" />
+    <list default="true" id="99e38795-a09d-4042-9e3a-59fda27c7516" name="Changes" comment="Cleaned up structure by utilizing routers.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/data/payments.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/data/payments.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/data/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/data/users.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/models/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/models/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/tests/test_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/tests/test_main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/tests/test_payments.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/tests/test_payments.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,7 +81,7 @@
       <recent name="$PROJECT_DIR$/app" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="FastAPI.My_Line">
     <configuration name="auth" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="My_Line" />
       <option name="ENV_FILES" value="" />
@@ -142,7 +144,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1786735798419</updated>
-      <workItem from="1786735799418" duration="32782000" />
+      <workItem from="1786735799418" duration="57459000" />
     </task>
     <task id="LOCAL-00001" summary="Initial Commit">
       <option name="closed" value="true" />
@@ -152,7 +154,23 @@
       <option name="project" value="LOCAL" />
       <updated>1787248480740</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Started payments.py integration alongside test suite and alembic db migrations">
+      <option name="closed" value="true" />
+      <created>1787524568408</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1787524568409</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Cleaned up structure by utilizing routers.">
+      <option name="closed" value="true" />
+      <created>1787528783940</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1787528783940</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -171,12 +189,14 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Initial Commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="Initial Commit" />
+    <MESSAGE value="Started payments.py integration alongside test suite and alembic db migrations" />
+    <MESSAGE value="Cleaned up structure by utilizing routers." />
+    <option name="LAST_COMMIT_MESSAGE" value="Cleaned up structure by utilizing routers." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/My_Line$My_Line.coverage" NAME="My_Line Coverage Results" MODIFIED="1787167887832" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/My_Line$My_Line.coverage" NAME="My_Line Coverage Results" MODIFIED="1787948359605" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/My_Line$test_main.coverage" NAME="test_main Coverage Results" MODIFIED="1787248773699" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app/tests" />
     <SUITE FILE_PATH="coverage/My_Line$auth.coverage" NAME="auth Coverage Results" MODIFIED="1786994072837" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app/models" />
-    <SUITE FILE_PATH="coverage/My_Line$.coverage" NAME=" Coverage Results" MODIFIED="1787249135028" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/My_Line$.coverage" NAME=" Coverage Results" MODIFIED="1787524765262" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

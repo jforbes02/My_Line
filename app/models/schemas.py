@@ -17,8 +17,8 @@ def validate_phone(phone: str) -> str:
 # --- Requests ---
 
 class SignupRequest(BaseModel):
-    email: str
-    password: str
+    email: str | None
+    password: str | None
     phone: str
 
     @field_validator('phone')
@@ -26,6 +26,14 @@ class SignupRequest(BaseModel):
     def phone_must_be_valid(cls, v):
         return validate_phone(v)
 
+
+class RegisterRequest(BaseModel):
+    phone: str
+
+    @field_validator('phone')
+    @classmethod
+    def phone_must_be_valid(cls, v):
+        return validate_phone(v)
 
 class UpdateNameRequest(BaseModel):
     name: str
@@ -37,17 +45,21 @@ class ListingRequest(BaseModel):
     spot_in_queue: int
 
 class AccountCreate(BaseModel):
-    business_type : str = 'company'
+    business_type: str = 'individual'
     country: str = 'US'
 
 class TransactionRequest(BaseModel):
     listing_id: int
+
+class UpdateEmailRequest(BaseModel):
+    email: str
 
 # --- Responses ---
 
 class UserResponse(BaseModel):
     name: str | None
     phone_number: str
+    email: str | None
 
     model_config = {"from_attributes": True}
 

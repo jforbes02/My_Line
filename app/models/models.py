@@ -1,5 +1,5 @@
 from app.models.db import Base
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 import enum
@@ -10,8 +10,12 @@ class User(Base):
 
     firebase_uid = Column(String, primary_key=True)
     name = Column(String, nullable=True)
-    phone_number = Column(String, nullable=False, )
+    email = Column(String, nullable=True)
+    phone_number = Column(String, nullable=False)
+
     stripe_account_id = Column(String, nullable=True)
+    stripe_onboarded = Column(Boolean, default=False, nullable=False, server_default='false')
+
     completed_transactions = Column(Integer, default=0, nullable=False)
 
     listings = relationship('Listing', back_populates='seller', foreign_keys='Listing.seller_uid')

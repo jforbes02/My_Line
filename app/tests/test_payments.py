@@ -33,8 +33,8 @@ def test_onboard_seller_new_account(override_db):
     mock_link.url = "https://connect.stripe.com/setup/test"
 
     with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
-         patch('app.data.payments.client.v1.accounts.create', return_value=mock_account), \
-         patch('app.data.payments.client.v1.account_links.create', return_value=mock_link):
+         patch('app.data.payments.client.v2.core.accounts.create', return_value=mock_account), \
+         patch('app.data.payments.client.v2.core.account_links.create', return_value=mock_link):
         response = client.post("/onboard_seller?token=fake-token")
 
     assert response.status_code == 200
@@ -53,8 +53,8 @@ def test_onboard_seller_existing_account(override_db):
     mock_link.url = "https://connect.stripe.com/setup/existing"
 
     with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
-         patch('app.data.payments.client.v1.accounts.create') as mock_create, \
-         patch('app.data.payments.client.v1.account_links.create', return_value=mock_link):
+         patch('app.data.payments.client.v2.core.accounts.create') as mock_create, \
+         patch('app.data.payments.client.v2.core.account_links.create', return_value=mock_link):
         response = client.post("/onboard_seller?token=fake-token")
 
     assert response.status_code == 200
@@ -81,8 +81,8 @@ def test_start_transaction(override_db):
 
     mock_transaction = FakeTransaction()
 
-    # first call returns user (for CurrentUser), second returns listing (for start_transaction)
-    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, mock_listing]
+    # user (CurrentUser), listing, None (no existing transaction)
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, mock_listing, None]
 
     with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
          patch('app.data.payments.client.v1.payment_intents.create', return_value=mock_intent), \
@@ -93,6 +93,22 @@ def test_start_transaction(override_db):
     assert response.json()["client_secret"] == "pi_test_123_secret_key"
     assert response.json()["price"] == 50.0
     assert response.json()["stripe_payment_intent_id"] == "pi_test_123"
+
+
+def test_start_transaction_listing_already_taken(override_db):
+    mock_decoded = {"uid": "buyer-uid-123"}
+    mock_user = MagicMock()
+    mock_listing = MagicMock()
+    mock_listing.id = 1
+    existing_transaction = FakeTransaction()
+
+    # user, listing, existing transaction found
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, mock_listing, existing_transaction]
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
+        response = client.post("/start_transaction?token=fake-token", json={"listing_id": 1})
+
+    assert response.status_code == 400
 
 
 def test_start_transaction_listing_not_found(override_db):

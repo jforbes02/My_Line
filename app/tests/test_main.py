@@ -33,6 +33,37 @@ def test_signup_invalid_phone():
     assert response.status_code == 422
 
 
+# --- Register ---
+
+def test_register(override_db):
+    mock_decoded = {"uid": "phone-uid-123"}
+    mock_user = MagicMock()
+    mock_user.firebase_uid = "phone-uid-123"
+    mock_user.phone_number = "+19143434288"
+    mock_user.name = None
+    # first call (CurrentUser) returns the Firebase-verified user, second (existing check) returns None
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, None]
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
+        response = client.post("/register?token=fake-token", json={"phone": "914-343-4288"})
+
+    assert response.status_code == 200
+    assert response.json()["phone_number"] == "+19143434288"
+
+
+def test_register_already_exists(override_db):
+    mock_decoded = {"uid": "phone-uid-123"}
+    mock_user = MagicMock()
+    mock_user.firebase_uid = "phone-uid-123"
+    # both calls return a user — existing check finds one
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, mock_user]
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
+        response = client.post("/register?token=fake-token", json={"phone": "914-343-4288"})
+
+    assert response.status_code == 400
+
+
 # --- Login ---
 
 def test_login(override_db):
@@ -40,9 +71,10 @@ def test_login(override_db):
     mock_user = MagicMock()
     mock_user.name = "Justin"
     mock_user.phone_number = "+19143434288"
+    mock_user.email = None
     override_db.query.return_value.filter.return_value.first.return_value = mock_user
 
-    with patch('app.main.firebase_auth.verify_id_token', return_value=mock_decoded), \
+    with patch('app.data.users.firebase_auth.verify_id_token', return_value=mock_decoded), \
          patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
         response = client.post("/login?token=fake-token")
 
@@ -53,7 +85,7 @@ def test_login(override_db):
 def test_login_user_not_found(override_db):
     mock_decoded = {"uid": "nonexistent-uid"}
 
-    with patch('app.main.firebase_auth.verify_id_token', return_value=mock_decoded), \
+    with patch('app.data.users.firebase_auth.verify_id_token', return_value=mock_decoded), \
          patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
         response = client.post("/login?token=fake-token")
 
@@ -68,9 +100,9 @@ def test_delete_user(override_db):
     mock_user.firebase_uid = "test-uid-123"
     override_db.query.return_value.filter.return_value.first.return_value = mock_user
 
-    with patch('app.main.firebase_auth.verify_id_token', return_value=mock_decoded), \
+    with patch('app.data.users.firebase_auth.verify_id_token', return_value=mock_decoded), \
          patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
-         patch('app.main.firebase_auth.delete_user') as mock_delete:
+         patch('app.data.users.firebase_auth.delete_user') as mock_delete:
         response = client.delete("/delete_user?token=fake-token")
 
     assert response.status_code == 200
@@ -81,7 +113,7 @@ def test_delete_user(override_db):
 def test_delete_user_not_found(override_db):
     mock_decoded = {"uid": "nonexistent-uid"}
 
-    with patch('app.main.firebase_auth.verify_id_token', return_value=mock_decoded), \
+    with patch('app.data.users.firebase_auth.verify_id_token', return_value=mock_decoded), \
          patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
         response = client.delete("/delete_user?token=fake-token")
 
@@ -95,9 +127,10 @@ def test_update_name(override_db):
     mock_user = MagicMock()
     mock_user.name = "Justin"
     mock_user.phone_number = "+19143434288"
+    mock_user.email = None
     override_db.query.return_value.filter.return_value.first.return_value = mock_user
 
-    with patch('app.main.firebase_auth.verify_id_token', return_value=mock_decoded), \
+    with patch('app.data.users.firebase_auth.verify_id_token', return_value=mock_decoded), \
          patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
         response = client.post("/update_name?token=fake-token", json={"name": "Justin"})
 
@@ -111,6 +144,7 @@ def test_create_listing(override_db):
     mock_decoded = {"uid": "test-uid-123"}
     mock_user = MagicMock()
     mock_user.firebase_uid = "test-uid-123"
+    mock_user.stripe_onboarded = True
     mock_listing = MagicMock()
     mock_listing.id = 1
     mock_listing.price = 50.0
@@ -132,3 +166,20 @@ def test_create_listing(override_db):
     assert response.json()["price"] == 50.0
     assert response.json()["lat"] == 40.7128
     assert response.json()["spot_in_queue"] == 3
+
+
+def test_create_listing_not_onboarded(override_db):
+    mock_decoded = {"uid": "test-uid-123"}
+    mock_user = MagicMock()
+    mock_user.stripe_onboarded = False
+    override_db.query.return_value.filter.return_value.first.return_value = mock_user
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
+        response = client.post("/create_listing?token=fake-token", json={
+            "price": 50.0,
+            "lat": 40.7128,
+            "lng": -74.0060,
+            "spot_in_queue": 3
+        })
+
+    assert response.status_code == 400
