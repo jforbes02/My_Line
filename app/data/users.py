@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.post("/signup", response_model=UserResponse)
-async def signup(db: mySession, body: SignupRequest):
+def signup(db: mySession, body: SignupRequest):
     """Email/password flow — backend creates the Firebase account and DB record together."""
     if not body.email or not body.password:
         raise HTTPException(status_code=400, detail="Email and password required for this flow")
@@ -30,7 +30,7 @@ async def signup(db: mySession, body: SignupRequest):
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(db: mySession, user: CurrentUser, body: RegisterRequest):
+def register(db: mySession, user: CurrentUser, body: RegisterRequest):
     """Phone auth flow — Firebase account already exists on client, just create the DB record."""
     existing = db.query(User).filter(User.firebase_uid == user.firebase_uid).first()
     if existing:
@@ -48,7 +48,7 @@ async def register(db: mySession, user: CurrentUser, body: RegisterRequest):
 
 
 @router.post("/login", response_model=UserResponse)
-async def login(db: mySession, token: str):
+def login(db: mySession, token: str):
     decoded = firebase_auth.verify_id_token(token)
     uid = decoded["uid"]
     user = db.query(User).filter(User.firebase_uid == uid).first()
@@ -58,7 +58,7 @@ async def login(db: mySession, token: str):
 
 
 @router.delete("/delete_user")
-async def delete_user(db: mySession, user: CurrentUser):
+def delete_user(db: mySession, user: CurrentUser):
     try:
         firebase_auth.delete_user(user.firebase_uid)
         db.delete(user)
@@ -73,7 +73,7 @@ async def delete_user(db: mySession, user: CurrentUser):
 
 
 @router.post("/update_name", response_model=UserResponse)
-async def update_name(db: mySession, body: UpdateNameRequest, user: CurrentUser):
+def update_name(db: mySession, body: UpdateNameRequest, user: CurrentUser):
     try:
         user.name = body.name
         db.commit()
@@ -84,8 +84,9 @@ async def update_name(db: mySession, body: UpdateNameRequest, user: CurrentUser)
     return user
 
 @router.post("/update_email", response_model=UserResponse)
-async def update_email(db: mySession, user: CurrentUser, body: UpdateEmailRequest):
+def update_email(db: mySession, user: CurrentUser, body: UpdateEmailRequest):
     try:
+        firebase_auth.update_user(user.firebase_uid, email=body.email)
         user.email = body.email
         db.commit()
     except Exception as e:

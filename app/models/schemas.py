@@ -35,8 +35,10 @@ class RegisterRequest(BaseModel):
     def phone_must_be_valid(cls, v):
         return validate_phone(v)
 
+
 class UpdateNameRequest(BaseModel):
     name: str
+
 
 class ListingRequest(BaseModel):
     price: float
@@ -44,12 +46,15 @@ class ListingRequest(BaseModel):
     lng: float
     spot_in_queue: int
 
+
 class AccountCreate(BaseModel):
     business_type: str = 'individual'
     country: str = 'US'
 
+
 class TransactionRequest(BaseModel):
     listing_id: int
+
 
 class UpdateEmailRequest(BaseModel):
     email: str
@@ -70,11 +75,13 @@ class ListingResponse(BaseModel):
     spot_in_queue: int
     lat: float
     lng: float
-
+    sold: bool = False
     model_config = {"from_attributes": True}
+
 
 class OnboardSellerResponse(BaseModel):
     url: str
+
 
 class TransactionResponse(BaseModel):
     listing_id: int
@@ -84,3 +91,12 @@ class TransactionResponse(BaseModel):
     created_at: datetime
     stripe_payment_intent_id: str
     client_secret: str | None = None
+
+
+class AbandonTransactionResponse(BaseModel):
+    listing_id: int
+    seller_uid: str
+    buyer_uid: str
+    created_at: datetime
+    stripe_payment_intent_id: str
+

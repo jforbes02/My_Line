@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="99e38795-a09d-4042-9e3a-59fda27c7516" name="Changes" comment="Cleaned up structure by utilizing routers.">
+    <list default="true" id="99e38795-a09d-4042-9e3a-59fda27c7516" name="Changes" comment="Working on Stripe logic along with fleshing out more how I want the inside of the project to work with the backend.">
+      <change afterPath="$PROJECT_DIR$/app/data/listings.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/tests/test_listings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/data/payments.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/data/payments.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/data/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/data/users.py" afterDir="false" />
@@ -39,6 +41,12 @@
     "url": "https://github.com/jforbes02/My_Line.git",
     "accountId": "04bcac7f-b66b-4482-aa93-e2a34a53a3a1"
   }
+}]]></component>
+  <component name="HttpClientEndpointsTabState">
+    <option name="cachedRequestData" value="&lt;CachedHttpClientTabRequests&gt;&#10;  &lt;entry key=&quot;b08e2ec6f570bbfbf462ca6449c41f5d5d45bda1&quot; value=&quot;###&amp;#10;POST http://localhost:8000/abandon_transaction&quot; /&gt;&#10;&lt;/CachedHttpClientTabRequests&gt;" />
+  </component>
+  <component name="HttpClientOnboardingState"><![CDATA[{
+  "isOnboardingCommentShown": true
 }]]></component>
   <component name="ProjectColorInfo"><![CDATA[{
   "associatedIndex": 4
@@ -144,7 +152,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1786735798419</updated>
-      <workItem from="1786735799418" duration="57459000" />
+      <workItem from="1786735799418" duration="82526000" />
     </task>
     <task id="LOCAL-00001" summary="Initial Commit">
       <option name="closed" value="true" />
@@ -170,7 +178,15 @@
       <option name="project" value="LOCAL" />
       <updated>1787528783940</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Working on Stripe logic along with fleshing out more how I want the inside of the project to work with the backend.">
+      <option name="closed" value="true" />
+      <created>1787949348941</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1787949348941</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -191,10 +207,11 @@
     <MESSAGE value="Initial Commit" />
     <MESSAGE value="Started payments.py integration alongside test suite and alembic db migrations" />
     <MESSAGE value="Cleaned up structure by utilizing routers." />
-    <option name="LAST_COMMIT_MESSAGE" value="Cleaned up structure by utilizing routers." />
+    <MESSAGE value="Working on Stripe logic along with fleshing out more how I want the inside of the project to work with the backend." />
+    <option name="LAST_COMMIT_MESSAGE" value="Working on Stripe logic along with fleshing out more how I want the inside of the project to work with the backend." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/My_Line$My_Line.coverage" NAME="My_Line Coverage Results" MODIFIED="1787948359605" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/My_Line$My_Line.coverage" NAME="My_Line Coverage Results" MODIFIED="1788289734733" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/My_Line$test_main.coverage" NAME="test_main Coverage Results" MODIFIED="1787248773699" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app/tests" />
     <SUITE FILE_PATH="coverage/My_Line$auth.coverage" NAME="auth Coverage Results" MODIFIED="1786994072837" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app/models" />
     <SUITE FILE_PATH="coverage/My_Line$.coverage" NAME=" Coverage Results" MODIFIED="1787524765262" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
