@@ -7,12 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from starlette.responses import StreamingResponse
 from stripe import StripeClient
 from typing import Annotated
-
 from app.models.auth import CurrentUser
 from app.models.db import mySession
-from app.models.schemas import AccountCreate, OnboardSellerResponse, TransactionResponse, TransactionRequest, \
-    ListingResponse, ListingRequest, AbandonTransactionResponse
+from app.models.schemas import AccountCreate, OnboardSellerResponse, TransactionResponse, TransactionRequest, AbandonTransactionResponse
 from app.models.models import Listing, Transaction, TransactionStatus, User
+from waygate.fastapi import rate_limit
 
 client = StripeClient(os.getenv('STRIPE_API_KEY'))
 
@@ -25,6 +24,13 @@ def verify_admin(x_admin_key: Annotated[str | None, Header()] = None):
 
 @router.post('/onboard_seller', response_model=OnboardSellerResponse)
 def onboard_seller(db: mySession, user: CurrentUser, body: AccountCreate = AccountCreate()):
+    """
+    Onboard Potential seller to Stripe
+    :param db: session
+    :param user: current user
+    :param body: default AccountCreate parameters "individual, US"
+    :return: Stripe Onboard Seller URL
+    """
     if not user.email:
         raise HTTPException(status_code=400, detail="An email address is required to become a seller")
 
@@ -72,7 +78,15 @@ def onboard_seller(db: mySession, user: CurrentUser, body: AccountCreate = Accou
 
 
 @router.post('/start_transaction', response_model=TransactionResponse)
+@rate_limit("3/minute", key="user", on_missing_key="block")
 def start_transaction(db: mySession, user: CurrentUser, body: TransactionRequest):
+    """
+    Begin transaction of a listing
+    :param db: session
+    :param user: current user
+    :param body: TransactionRequest (listing_id)
+    :return: Information about the transaction along with stripe client_secret so frontend can collect info about payment
+    """
     listing = db.query(Listing).filter(Listing.id == body.listing_id).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -84,18 +98,18 @@ def start_transaction(db: mySession, user: CurrentUser, body: TransactionRequest
     if active:
         raise HTTPException(status_code=400, detail="Listing no longer available")
 
-    intent = client.v1.payment_intents.create({
-        'amount': int(listing.price * 100),
-        'currency': 'usd',
-        'capture_method': 'manual',
-        'payment_method_types': ['card'],
-        'transfer_data': {
-            'destination': listing.seller.stripe_account_id,
-        },
-        'application_fee_amount': int(listing.price * 0.10 * 100),
-    })
-
+    intent = None
     try:
+        intent = client.v1.payment_intents.create({
+            'amount': int(listing.price * 100),
+            'currency': 'usd',
+            'capture_method': 'manual',
+            'payment_method_types': ['card'],
+            'transfer_data': {
+                'destination': listing.seller.stripe_account_id,
+            },
+            'application_fee_amount': int(listing.price * 0.10 * 100),
+        })
         transaction = Transaction(
             listing_id=listing.id,
             buyer_uid=user.firebase_uid,
@@ -108,13 +122,21 @@ def start_transaction(db: mySession, user: CurrentUser, body: TransactionRequest
         db.refresh(transaction)
     except Exception as e:
         db.rollback()
+        if intent:
+            client.v1.payment_intents.cancel(intent.id)
         raise HTTPException(status_code=400, detail=str(e))
-
 
     return {**transaction.__dict__, 'client_secret': intent.client_secret}
 
 @router.post('/confirm_transaction', response_model=TransactionResponse)
 def confirm_transaction(db: mySession, user: CurrentUser, body: TransactionRequest):
+    """
+    Seller confirmation of a transaction (when qr code is scanned)
+    :param db: session
+    :param user: current user
+    :param body: TransactionRequest (listing_id)
+    :return: Information about the transaction
+    """
     transaction = db.query(Transaction).filter(Transaction.listing_id == body.listing_id).first()
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
@@ -146,22 +168,31 @@ def confirm_transaction(db: mySession, user: CurrentUser, body: TransactionReque
 
 @router.post('/webhook')
 async def stripe_webhook(request: Request, db: mySession):
+    """
+    Stripe Webhook
+    :param request:
+    :param db: session
+    :return: None
+    """
+
+    #signature verification
     payload = await request.body()
     sig_header = request.headers.get('stripe-signature')
 
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, os.getenv('STRIPE_WEBHOOK_SECRET')
-
         )
     except stripe.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
+    #business logic
     try:
         event_dict = event.to_dict()
         event_type = event_dict['type']
         obj = event_dict['data']['object']
 
+        #onboarding
         if event_type == 'capability.updated':
             if obj.get('status') == 'active':
                 account_id = obj.get('account')
@@ -171,6 +202,7 @@ async def stripe_webhook(request: Request, db: mySession):
                         user.stripe_onboarded = True
                         db.commit()
 
+        # Authorization of buyers card + QR activation
         elif event_type == 'payment_intent.amount_capturable_updated':
             payment_intent_id = obj.get('id')
             if payment_intent_id:
@@ -194,13 +226,42 @@ async def stripe_webhook(request: Request, db: mySession):
                     transaction.status = TransactionStatus.cancelled
                     db.commit()
 
+        #payment failure handling
+        elif event_type == 'payment_intent.payment_failed':
+            payment_intent_id = obj.get('id')
+            if payment_intent_id:
+                transaction = db.query(Transaction).filter(
+                    Transaction.stripe_payment_intent_id == payment_intent_id,
+                    Transaction.status == TransactionStatus.pending
+                ).first()
+                if transaction:
+                    transaction.status = TransactionStatus.cancelled
+                    db.commit()
+
+        #payment refund handling
+        elif event_type == 'charge.refunded':
+            payment_intent_id = obj.get('payment_intent')
+            if payment_intent_id:
+                transaction = db.query(Transaction).filter(
+                    Transaction.stripe_payment_intent_id == payment_intent_id,
+                    Transaction.status == TransactionStatus.completed
+                ).first()
+                if transaction:
+                    transaction.status = TransactionStatus.refunded
+                    db.commit()
+
     except Exception as e:
         print(f"[webhook] ERROR: {e}")
 
-    return {"status": "ok"}
-
 @router.post('/abandon_transaction', response_model=AbandonTransactionResponse)
 def abandon_transaction(db: mySession, user: CurrentUser, body: TransactionRequest):
+    """
+    Abandon transaction
+    :param db: session
+    :param user: current user
+    :param body: listing id
+    :return: seller_uid, buyer_uid, listing id, created_at, stripe_payment_intent_id
+    """
     transaction = db.query(Transaction).filter(Transaction.listing_id == body.listing_id).first()
 
     if not transaction:
@@ -225,6 +286,12 @@ def abandon_transaction(db: mySession, user: CurrentUser, body: TransactionReque
 
 @router.post('/refund_transaction', response_model=TransactionResponse, dependencies=[Depends(verify_admin)])
 def refund_transaction(db: mySession, body: TransactionRequest):
+    """
+    Refund transaction
+    :param db: session
+    :param body: listing id
+    :return: seller_uid, buyer_uid
+    """
     transaction = db.query(Transaction).filter(Transaction.listing_id == body.listing_id).first()
 
     if not transaction:
@@ -251,6 +318,7 @@ def refund_transaction(db: mySession, body: TransactionRequest):
 
 @router.get('/transactions/sold', response_model=list[TransactionResponse])
 def get_sold_transactions(db: mySession, user: CurrentUser):
+    """ View transactions sold"""
     return db.query(Transaction).filter(
         Transaction.seller_uid == user.firebase_uid
     ).order_by(Transaction.created_at.desc()).all()
@@ -258,12 +326,20 @@ def get_sold_transactions(db: mySession, user: CurrentUser):
 
 @router.get('/transactions/bought', response_model=list[TransactionResponse])
 def get_bought_transactions(db: mySession, user: CurrentUser):
+    """View transactions bought"""
     return db.query(Transaction).filter(
         Transaction.buyer_uid == user.firebase_uid
     ).order_by(Transaction.created_at.desc()).all()
 
 @router.get('/transactions/{listing_id}/qr')
 def get_QR(listing_id: int, db: mySession, user: CurrentUser):
+    """
+    creating qr code of listing ID for buyer to scan
+    :param listing_id: id of listing
+    :param db: session
+    :param user: current user
+    :return: QR code of listing ID
+    """
     transaction = db.query(Transaction).filter(
         Transaction.listing_id == listing_id,
         Transaction.buyer_uid == user.firebase_uid,

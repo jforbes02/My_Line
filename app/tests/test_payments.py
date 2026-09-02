@@ -97,6 +97,48 @@ def test_start_transaction(override_db):
     assert response.json()["stripe_payment_intent_id"] == "pi_test_123"
 
 
+def test_start_transaction_stripe_failure(override_db):
+    mock_decoded = {"uid": "buyer-uid-123"}
+    mock_user = MagicMock()
+    mock_listing = MagicMock()
+    mock_listing.id = 1
+    mock_listing.price = 50.0
+    mock_listing.seller.stripe_account_id = "acct_seller_123"
+
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, mock_listing, None]
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
+         patch('app.data.payments.client.v1.payment_intents.create', side_effect=Exception("Stripe error")), \
+         patch('app.data.payments.client.v1.payment_intents.cancel') as mock_cancel:
+        response = client.post("/start_transaction?token=fake-token", json={"listing_id": 1})
+
+    assert response.status_code == 400
+    mock_cancel.assert_not_called()
+
+
+def test_start_transaction_db_failure_cancels_intent(override_db):
+    mock_decoded = {"uid": "buyer-uid-123"}
+    mock_user = MagicMock()
+    mock_listing = MagicMock()
+    mock_listing.id = 1
+    mock_listing.price = 50.0
+    mock_listing.seller.stripe_account_id = "acct_seller_123"
+
+    mock_intent = MagicMock()
+    mock_intent.id = "pi_test_123"
+
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, mock_listing, None]
+    override_db.commit.side_effect = Exception("DB error")
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded), \
+         patch('app.data.payments.client.v1.payment_intents.create', return_value=mock_intent), \
+         patch('app.data.payments.client.v1.payment_intents.cancel') as mock_cancel:
+        response = client.post("/start_transaction?token=fake-token", json={"listing_id": 1})
+
+    assert response.status_code == 400
+    mock_cancel.assert_called_once_with("pi_test_123")
+
+
 def test_start_transaction_listing_already_taken(override_db):
     mock_decoded = {"uid": "buyer-uid-123"}
     mock_user = MagicMock()
@@ -431,6 +473,49 @@ def test_webhook_amount_capturable_updated_no_match(override_db):
     override_db.query.return_value.filter.return_value.first.return_value = None
 
     mock_event = _make_webhook_event("payment_intent.amount_capturable_updated", {"id": "pi_unknown"})
+    with patch('app.data.payments.stripe.Webhook.construct_event', return_value=mock_event):
+        response = client.post("/webhook", content=b"payload", headers={"stripe-signature": "sig"})
+
+    assert response.status_code == 200
+
+def test_webhook_payment_failed(override_db):
+    mock_transaction = FakeTransaction(status=TransactionStatus.pending)
+    override_db.query.return_value.filter.return_value.first.return_value = mock_transaction
+
+    mock_event = _make_webhook_event("payment_intent.payment_failed", {"id": "pi_test_123"})
+    with patch('app.data.payments.stripe.Webhook.construct_event', return_value=mock_event):
+        response = client.post("/webhook", content=b"payload", headers={"stripe-signature": "sig"})
+
+    assert response.status_code == 200
+    assert mock_transaction.status == TransactionStatus.cancelled
+
+
+def test_webhook_payment_failed_no_match(override_db):
+    override_db.query.return_value.filter.return_value.first.return_value = None
+
+    mock_event = _make_webhook_event("payment_intent.payment_failed", {"id": "pi_unknown"})
+    with patch('app.data.payments.stripe.Webhook.construct_event', return_value=mock_event):
+        response = client.post("/webhook", content=b"payload", headers={"stripe-signature": "sig"})
+
+    assert response.status_code == 200
+
+
+def test_webhook_charge_refunded(override_db):
+    mock_transaction = FakeTransaction(status=TransactionStatus.completed)
+    override_db.query.return_value.filter.return_value.first.return_value = mock_transaction
+
+    mock_event = _make_webhook_event("charge.refunded", {"payment_intent": "pi_test_123"})
+    with patch('app.data.payments.stripe.Webhook.construct_event', return_value=mock_event):
+        response = client.post("/webhook", content=b"payload", headers={"stripe-signature": "sig"})
+
+    assert response.status_code == 200
+    assert mock_transaction.status == TransactionStatus.refunded
+
+
+def test_webhook_charge_refunded_no_match(override_db):
+    override_db.query.return_value.filter.return_value.first.return_value = None
+
+    mock_event = _make_webhook_event("charge.refunded", {"payment_intent": "pi_unknown"})
     with patch('app.data.payments.stripe.Webhook.construct_event', return_value=mock_event):
         response = client.post("/webhook", content=b"payload", headers={"stripe-signature": "sig"})
 

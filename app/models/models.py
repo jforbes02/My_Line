@@ -26,24 +26,6 @@ class User(Base):
     listings = relationship('Listing', back_populates='seller', foreign_keys='Listing.seller_uid')
 
 
-"""class Location(Base):
-    __tablename__ = 'locations'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    country = Column(String, nullable=False)
-    address = Column(String, nullable=False)
-
-    #listings = relationship('Listing', back_populates='location')
-"""
-
-class ListingStatus(enum.Enum):
-    available = 'available'
-    sold = 'sold'
-    cancelled = 'cancelled'
-
-
 class Listing(Base):
     __tablename__ = 'listings'
 

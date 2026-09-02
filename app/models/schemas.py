@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import phonenumbers
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, SecretStr
 
 
 def validate_phone(phone: str) -> str:
@@ -18,7 +18,7 @@ def validate_phone(phone: str) -> str:
 
 class SignupRequest(BaseModel):
     email: str | None
-    password: str | None
+    password: SecretStr | None
     phone: str
 
     @field_validator('phone')

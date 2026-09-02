@@ -11,11 +11,16 @@ router = APIRouter()
 
 @router.post("/signup", response_model=UserResponse)
 def signup(db: mySession, body: SignupRequest):
-    """Email/password flow — backend creates the Firebase account and DB record together."""
+    """Email/password flow — backend creates the Firebase account and DB record together.
+
+    :param db: database session
+    :param body: signup request (email, password, phone number)
+    :return: User response (name, phone number, email)
+    """
     if not body.email or not body.password:
         raise HTTPException(status_code=400, detail="Email and password required for this flow")
 
-    x = firebase_signup(body.email, body.password)
+    x = firebase_signup(body.email, body.password.get_secret_value())
 
     db_user = User(firebase_uid=x.uid, email=body.email, phone_number=body.phone)
     try:
@@ -31,7 +36,12 @@ def signup(db: mySession, body: SignupRequest):
 
 @router.post("/register", response_model=UserResponse)
 def register(db: mySession, user: CurrentUser, body: RegisterRequest):
-    """Phone auth flow — Firebase account already exists on client, just create the DB record."""
+    """Phone auth flow — Firebase account already exists on client, just create the DB record.
+    :param db: database session
+    :param user: current user
+    :param body: register request (phone number)
+    :return: User response (name, phone number, email)
+    """
     existing = db.query(User).filter(User.firebase_uid == user.firebase_uid).first()
     if existing:
         raise HTTPException(status_code=400, detail="User already registered")
@@ -49,6 +59,12 @@ def register(db: mySession, user: CurrentUser, body: RegisterRequest):
 
 @router.post("/login", response_model=UserResponse)
 def login(db: mySession, token: str):
+    """
+    Login with firebase
+    :param db: session
+    :param token: firebase auth token
+    :return: user
+    """
     decoded = firebase_auth.verify_id_token(token)
     uid = decoded["uid"]
     user = db.query(User).filter(User.firebase_uid == uid).first()
@@ -59,6 +75,12 @@ def login(db: mySession, token: str):
 
 @router.delete("/delete_user")
 def delete_user(db: mySession, user: CurrentUser):
+    """
+    deletes user from firebase and db
+    :param db: session
+    :param user: current user
+    :return: delete message
+    """
     try:
         firebase_auth.delete_user(user.firebase_uid)
         db.delete(user)
@@ -74,6 +96,13 @@ def delete_user(db: mySession, user: CurrentUser):
 
 @router.post("/update_name", response_model=UserResponse)
 def update_name(db: mySession, body: UpdateNameRequest, user: CurrentUser):
+    """
+    Update name of user
+    :param db: session
+    :param body: name update request (name)
+    :param user: current user
+    :return: user response
+    """
     try:
         user.name = body.name
         db.commit()
@@ -85,6 +114,13 @@ def update_name(db: mySession, body: UpdateNameRequest, user: CurrentUser):
 
 @router.post("/update_email", response_model=UserResponse)
 def update_email(db: mySession, user: CurrentUser, body: UpdateEmailRequest):
+    """
+    Updates the email of user in firebase and db
+    :param db: session
+    :param user: current user
+    :param body: email update request (email)
+    :return: user response with updated email
+    """
     try:
         firebase_auth.update_user(user.firebase_uid, email=body.email)
         user.email = body.email

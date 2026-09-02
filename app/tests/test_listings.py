@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from app.main import app
+from app.models.models import TransactionStatus
 
 client = TestClient(app)
 
@@ -19,9 +20,9 @@ class FakeListing:
 # --- Get Listings ---
 
 def test_get_listings(override_db):
-    override_db.query.return_value.filter.return_value.all.return_value = [FakeListing()]
+    override_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [FakeListing()]
 
-    response = client.get("/listings")
+    response = client.get("/listings?latitude=40.7128&longitude=-74.0060")
 
     assert response.status_code == 200
     assert len(response.json()) == 1
@@ -30,12 +31,27 @@ def test_get_listings(override_db):
 
 
 def test_get_listings_empty(override_db):
-    override_db.query.return_value.filter.return_value.all.return_value = []
+    override_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
 
-    response = client.get("/listings")
+    response = client.get("/listings?latitude=40.7128&longitude=-74.0060")
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_get_listings_missing_params(override_db):
+    response = client.get("/listings")
+
+    assert response.status_code == 422
+
+
+def test_get_listings_custom_distance(override_db):
+    override_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [FakeListing()]
+
+    response = client.get("/listings?latitude=40.7128&longitude=-74.0060&distance=0.10")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
 
 
 # --- Get My Listings ---
@@ -83,13 +99,27 @@ def test_delete_listing(override_db):
     mock_user = MagicMock()
     mock_user.firebase_uid = "seller-uid-123"
 
-    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, FakeListing()]
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, FakeListing(), None]
 
     with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
         response = client.delete("/listings/1?token=fake-token")
 
     assert response.status_code == 200
     assert response.json()["detail"] == "Listing deleted"
+
+
+def test_delete_listing_active_transaction(override_db):
+    mock_decoded = {"uid": "seller-uid-123"}
+    mock_user = MagicMock()
+    mock_user.firebase_uid = "seller-uid-123"
+
+    override_db.query.return_value.filter.return_value.first.side_effect = [mock_user, FakeListing(), MagicMock()]
+
+    with patch('app.models.auth.firebase_auth.verify_id_token', return_value=mock_decoded):
+        response = client.delete("/listings/1?token=fake-token")
+
+    assert response.status_code == 400
+    assert "active transaction" in response.json()["detail"]
 
 
 def test_delete_listing_not_found(override_db):
